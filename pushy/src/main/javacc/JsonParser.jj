@@ -1,4 +1,5 @@
 options {
+    CHOICE_AMBIGUITY_CHECK = 1;
     SUPPORT_CLASS_VISIBILITY_PUBLIC = false;
 }
 
@@ -12,109 +13,60 @@ import java.util.List;
 import java.util.Map;
 
 class JsonParser {
-    static String unescapeJsonString(final String jsonString) throws ParseException {
-        if ("\"\"".equals(jsonString)) {
-            return "";
-        }
-
-        final StringBuilder builder = new StringBuilder(jsonString.length());
-
-        int start = 1;
-
-        for (int i = 1; i < jsonString.length() - 1; i++) {
-            if (jsonString.charAt(i) == '\\') {
-                final int charsConsumed;
-                final char escapedChar;
-
-                // We can get away with reading ahead without bounds checking because the lexer won't let us get here
-                // if the input isn't valid.
-                switch (jsonString.charAt(i + 1)) {
-                    case '\"': {
-                        charsConsumed = 1;
-                        escapedChar = '\"';
-                        break;
-                    }
-
-                    case '\\': {
-                        charsConsumed = 1;
-                        escapedChar = '\\';
-                        break;
-                    }
-
-                    case '/': {
-                        charsConsumed = 1;
-                        escapedChar = '/';
-                        break;
-                    }
-
-                    case 'b': {
-                        charsConsumed = 1;
-                        escapedChar = '\b';
-                        break;
-                    }
-
-                    case 'f': {
-                        charsConsumed = 1;
-                        escapedChar = '\f';
-                        break;
-                    }
-
-                    case 'n': {
-                        charsConsumed = 1;
-                        escapedChar = '\n';
-                        break;
-                    }
-
-                    case 'r': {
-                        charsConsumed = 1;
-                        escapedChar = '\r';
-                        break;
-                    }
-
-                    case 't': {
-                        charsConsumed = 1;
-                        escapedChar = '\t';
-                        break;
-                    }
-
-                    case 'u': {
-                        charsConsumed = 5;
-                        escapedChar = (char) Integer.parseInt(jsonString.substring(i + 2, i + 6), 16);
-                        break;
-                    }
-
-                    default: {
-                        throw new ParseException("Unexpected escaped character: " + jsonString.charAt(i + 1));
-                    }
-                }
-
-                builder.append(jsonString, start, i);
-                builder.append(escapedChar);
-
-                i += charsConsumed;
-                start = i + 1;
-            }
-        }
-
-        builder.append(jsonString, start, jsonString.length() - 1);
-
-        return builder.toString();
-    }
 }
 
 PARSER_END(JsonParser)
 
+TOKEN_MGR_DECLS :
+{
+  private static final Map<String, Character> ESCAPED_CHARACTERS = new HashMap<>();
+
+  static {
+    ESCAPED_CHARACTERS.put("\\\"", '\"');
+    ESCAPED_CHARACTERS.put("\\\\", '\\');
+    ESCAPED_CHARACTERS.put("\\/", '/');
+    ESCAPED_CHARACTERS.put("\\b", '\b');
+    ESCAPED_CHARACTERS.put("\\f", '\f');
+    ESCAPED_CHARACTERS.put("\\n", '\n');
+    ESCAPED_CHARACTERS.put("\\r", '\r');
+    ESCAPED_CHARACTERS.put("\\t", '\t');
+  }
+}
 
 SKIP : {
     " " | "\t" | "\r" | "\n"
 }
 
-TOKEN : {
-    <#HEX_DIGIT: ["0"-"9", "a"-"f", "A"-"F"]> |
-    <#ESCAPED_CONTROL_CHARACTER: "\\" ["\"", "\\", "/", "b", "f", "n", "r", "t"]> |
-    <#ESCAPED_UNICODE_CHARACTER: "\\u" <HEX_DIGIT> <HEX_DIGIT> <HEX_DIGIT> <HEX_DIGIT>> |
-    <STRING: "\"" (~["\"", "\\", "\b", "\f", "\n", "\r", "\t"] | <ESCAPED_CONTROL_CHARACTER> | <ESCAPED_UNICODE_CHARACTER>)* "\""> |
+SKIP : {
+    "\"" : WithinString
+}
 
+<WithinString> MORE : {
+    <ESCAPED_CONTROL_CHARACTER: "\\" ["\"", "\\", "/", "b", "f", "n", "r", "t"]> {
+        final char escapedCharacter = ESCAPED_CHARACTERS.get(image.substring(image.length() - lengthOfMatch));
+
+        image.setLength(image.length() - lengthOfMatch);
+        image.append(escapedCharacter);
+    } |
+
+    <#HEX_DIGIT: ["0"-"9", "a"-"f", "A"-"F"]> |
+    <ESCAPED_UNICODE_CHARACTER: "\\u" <HEX_DIGIT> <HEX_DIGIT> <HEX_DIGIT> <HEX_DIGIT>> {
+        final char unicodeCharacter = (char) Integer.parseInt(image.substring(image.length() - 4), 16);
+
+        image.setLength(image.length() - lengthOfMatch);
+        image.append(unicodeCharacter);
+    } |
+
+    <NON_CONTROL_CHARACTER: ~["\"", "\\", "\b", "\f", "\n", "\r", "\t"]>
+}
+
+<WithinString> TOKEN : {
+    <STRING: "\""> {
+        matchedToken.image = image.substring(0, image.length() - 1);
+    } : DEFAULT
+}
+
+TOKEN : {
     <#DECIMAL_DIGIT: ["0"-"9"]> |
     <INTEGER: ("-")? (<DECIMAL_DIGIT>)+> |
     <FLOAT: ("-")? (<DECIMAL_DIGIT>)+ ("." (<DECIMAL_DIGIT>)+)? (["e", "E"] (["+", "-"])? (<DECIMAL_DIGIT>)+)?> |
@@ -170,7 +122,7 @@ String string():
     final Token token;
 }
 {
-    token = <STRING> { return unescapeJsonString(token.image); }
+    token = <STRING> { return token.image; }
 }
 
 Number number():
