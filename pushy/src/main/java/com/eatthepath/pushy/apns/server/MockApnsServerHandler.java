@@ -22,10 +22,8 @@
 
 package com.eatthepath.pushy.apns.server;
 
-import com.eatthepath.pushy.apns.util.InstantAsTimeSinceEpochTypeAdapter;
+import com.eatthepath.json.JsonSerializer;
 import com.eatthepath.uuid.FastUUID;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -39,9 +37,11 @@ import io.netty.util.concurrent.PromiseCombiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 class MockApnsServerHandler extends Http2ConnectionHandler implements Http2FrameListener {
 
@@ -54,10 +54,6 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
     private static final AsciiString APNS_ID_HEADER = new AsciiString("apns-id");
 
     private static final int MAX_CONTENT_LENGTH = 4096;
-
-    private static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(Instant.class, new InstantAsTimeSinceEpochTypeAdapter(TimeUnit.MILLISECONDS))
-            .create();
 
     private static final Logger log = LoggerFactory.getLogger(MockApnsServerHandler.class);
 
@@ -317,11 +313,22 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
 
             final byte[] payloadBytes;
             {
-                final ErrorPayload errorPayload =
-                        new ErrorPayload(rejectNotificationResponse.getErrorReason().getReasonText(),
-                                rejectNotificationResponse.getTimestamp());
+                final Map<String, Object> errorPayload = new HashMap<>(2, 1);
+                errorPayload.put("reason", rejectNotificationResponse.getErrorReason().getReasonText());
 
-                payloadBytes = GSON.toJson(errorPayload).getBytes();
+                if (rejectNotificationResponse.getTimestamp() != null) {
+                    errorPayload.put("timestamp", rejectNotificationResponse.timestamp.toEpochMilli());
+                }
+
+                final StringBuilder stringBuilder = new StringBuilder();
+
+                try {
+                    JsonSerializer.writeJsonText(errorPayload, stringBuilder);
+                    payloadBytes = stringBuilder.toString().getBytes();
+                } catch (final IOException e) {
+                    // This should never happen for a StringBuilder
+                    throw new RuntimeException("Failed to write JSON text", e);
+                }
             }
 
             final ChannelPromise headersPromise = context.newPromise();

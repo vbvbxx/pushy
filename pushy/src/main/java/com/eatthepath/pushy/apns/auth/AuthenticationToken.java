@@ -23,26 +23,24 @@
 package com.eatthepath.pushy.apns.auth;
 
 import com.eatthepath.json.JsonDeserializer;
+import com.eatthepath.json.JsonSerializer;
 import com.eatthepath.json.ParseException;
-import com.eatthepath.pushy.apns.util.InstantAsTimeSinceEpochTypeAdapter;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.annotations.SerializedName;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.base64.Base64Dialect;
 import io.netty.util.AsciiString;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 /**
  * <p>An authentication token (or "provider authentication token" or "provider token" in Apple's terminology) is a
@@ -69,13 +67,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthenticationToken {
 
     static class AuthenticationTokenHeader {
-        @SerializedName("alg")
-        private final String algorithm = "ES256";
 
-        @SerializedName("typ")
-        private final String tokenType = "JWT";
-
-        @SerializedName("kid")
         private final String keyId;
 
         AuthenticationTokenHeader(final String keyId) {
@@ -93,14 +85,20 @@ public class AuthenticationToken {
         String getKeyId() {
             return this.keyId;
         }
+
+        Map<String, Object> toMap() {
+            final Map<String, Object> headerMap = new HashMap<>(3, 1);
+            headerMap.put("alg", "ES256");
+            headerMap.put("typ", "JWT");
+            headerMap.put("kid", this.keyId);
+
+            return headerMap;
+        }
     }
 
     static class AuthenticationTokenClaims {
 
-        @SerializedName("iss")
         private final String issuer;
-
-        @SerializedName("iat")
         private final Instant issuedAt;
 
         AuthenticationTokenClaims(final String teamId, final Instant issuedAt) {
@@ -130,12 +128,15 @@ public class AuthenticationToken {
         Instant getIssuedAt() {
             return this.issuedAt;
         }
-    }
 
-    private static final Gson GSON = new GsonBuilder()
-            .disableHtmlEscaping()
-            .registerTypeAdapter(Instant.class, new InstantAsTimeSinceEpochTypeAdapter(TimeUnit.SECONDS))
-            .create();
+        Map<String, Object> toMap() {
+            final Map<String, Object> headerMap = new HashMap<>(2, 1);
+            headerMap.put("iss", this.issuer);
+            headerMap.put("iat", this.issuedAt.getEpochSecond());
+
+            return headerMap;
+        }
+    }
 
     private final AuthenticationTokenHeader header;
     private final AuthenticationTokenClaims claims;
@@ -160,8 +161,8 @@ public class AuthenticationToken {
         this.header = new AuthenticationTokenHeader(signingKey.getKeyId());
         this.claims = new AuthenticationTokenClaims(signingKey.getTeamId(), issuedAt);
 
-        final String headerJson = GSON.toJson(this.header);
-        final String claimsJson = GSON.toJson(this.claims);
+        final String headerJson = getMapAsJsonText(this.header.toMap());
+        final String claimsJson = getMapAsJsonText(this.claims.toMap());
 
         final StringBuilder payloadBuilder = new StringBuilder();
         payloadBuilder.append(encodeUnpaddedBase64UrlString(headerJson.getBytes(StandardCharsets.US_ASCII)));
@@ -274,8 +275,8 @@ public class AuthenticationToken {
 
         final byte[] headerAndClaimsBytes;
 
-        final String headerJson = GSON.toJson(this.header);
-        final String claimsJson = GSON.toJson(this.claims);
+        final String headerJson = getMapAsJsonText(this.header.toMap());
+        final String claimsJson = getMapAsJsonText(this.claims.toMap());
 
         final String encodedHeaderAndClaims =
                 encodeUnpaddedBase64UrlString(headerJson.getBytes(StandardCharsets.US_ASCII)) + '.' +
@@ -376,5 +377,18 @@ public class AuthenticationToken {
         decodedByteBuf.release();
 
         return decodedBytes;
+    }
+
+    static String getMapAsJsonText(final Map<String, Object> map) {
+        final StringBuilder stringBuilder = new StringBuilder();
+
+        try {
+            JsonSerializer.writeJsonText(map, stringBuilder);
+        } catch (final IOException e) {
+            // This should never happen with a StringBuilder
+            throw new RuntimeException("Failed to write JSON text", e);
+        }
+
+        return stringBuilder.toString();
     }
 }
