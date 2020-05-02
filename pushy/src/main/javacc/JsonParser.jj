@@ -1,0 +1,186 @@
+options {
+    SUPPORT_CLASS_VISIBILITY_PUBLIC = false;
+}
+
+PARSER_BEGIN(JsonParser)
+
+package com.eatthepath.json;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+class JsonParser {
+    static String unescapeJsonString(final String jsonString) throws ParseException {
+        if ("\"\"".equals(jsonString)) {
+            return "";
+        }
+
+        final StringBuilder builder = new StringBuilder(jsonString.length());
+
+        int start = 1;
+
+        for (int i = 1; i < jsonString.length() - 1; i++) {
+            if (jsonString.charAt(i) == '\\') {
+                final int charsConsumed;
+                final char escapedChar;
+
+                // We can get away with reading ahead without bounds checking because the lexer won't let us get here
+                // if the input isn't valid.
+                switch (jsonString.charAt(i + 1)) {
+                    case '\"': {
+                        charsConsumed = 1;
+                        escapedChar = '\"';
+                        break;
+                    }
+
+                    case '\\': {
+                        charsConsumed = 1;
+                        escapedChar = '\\';
+                        break;
+                    }
+
+                    case '/': {
+                        charsConsumed = 1;
+                        escapedChar = '/';
+                        break;
+                    }
+
+                    case 'b': {
+                        charsConsumed = 1;
+                        escapedChar = '\b';
+                        break;
+                    }
+
+                    case 'f': {
+                        charsConsumed = 1;
+                        escapedChar = '\f';
+                        break;
+                    }
+
+                    case 'n': {
+                        charsConsumed = 1;
+                        escapedChar = '\n';
+                        break;
+                    }
+
+                    case 'r': {
+                        charsConsumed = 1;
+                        escapedChar = '\r';
+                        break;
+                    }
+
+                    case 't': {
+                        charsConsumed = 1;
+                        escapedChar = '\t';
+                        break;
+                    }
+
+                    case 'u': {
+                        charsConsumed = 5;
+                        escapedChar = (char) Integer.parseInt(jsonString.substring(i + 2, i + 6), 16);
+                        break;
+                    }
+
+                    default: {
+                        throw new ParseException("Unexpected escaped character: " + jsonString.charAt(i + 1));
+                    }
+                }
+
+                builder.append(jsonString, start, i);
+                builder.append(escapedChar);
+
+                i += charsConsumed;
+                start = i + 1;
+            }
+        }
+
+        builder.append(jsonString, start, jsonString.length() - 1);
+
+        return builder.toString();
+    }
+}
+
+PARSER_END(JsonParser)
+
+
+SKIP : {
+    " " | "\t" | "\r" | "\n"
+}
+
+TOKEN : {
+    <#HEX_DIGIT: ["0"-"9", "a"-"f", "A"-"F"]> |
+    <#ESCAPED_CONTROL_CHARACTER: "\\" ["\"", "\\", "/", "b", "f", "n", "r", "t"]> |
+    <#ESCAPED_UNICODE_CHARACTER: "\\u" <HEX_DIGIT> <HEX_DIGIT> <HEX_DIGIT> <HEX_DIGIT>> |
+    <STRING: "\"" (~["\"", "\\", "\b", "\f", "\n", "\r", "\t"] | <ESCAPED_CONTROL_CHARACTER> | <ESCAPED_UNICODE_CHARACTER>)* "\""> |
+
+    <#DECIMAL_DIGIT: ["0"-"9"]> |
+    <INTEGER: ("-")? (<DECIMAL_DIGIT>)+> |
+    <FLOAT: ("-")? (<DECIMAL_DIGIT>)+ ("." (<DECIMAL_DIGIT>)+)? (["e", "E"] (["+", "-"])? (<DECIMAL_DIGIT>)+)?> |
+
+    <TRUE: "true"> |
+    <FALSE: "false"> |
+
+    <NULL: "null">
+}
+
+Map<String, Object> object():
+{
+    final Map<String, Object> map = new HashMap<>();
+
+    String key;
+    Object value;
+}
+{
+    "{" (key = string() ":" value = value() { map.put(key, value); }
+        ("," key = string() ":" value = value() { map.put(key, value); })*
+    )? "}" { return map; }
+}
+
+List<Object> list():
+{
+    final List<Object> list = new ArrayList<>();
+    Object element;
+}
+{
+    "[" (element = value() { list.add(element); }
+        ("," element = value() { list.add(element); })*
+    )? "]" { return list; }
+}
+
+Object value():
+{
+    final Object value;
+}
+{
+    (
+        value = string() |
+        value = number() |
+        value = object() |
+        value = list() |
+        <TRUE> { value = true; } |
+        <FALSE> { value = false; } |
+        <NULL> { value = null; }
+    ) { return value; }
+}
+
+String string():
+{
+    final Token token;
+}
+{
+    token = <STRING> { return unescapeJsonString(token.image); }
+}
+
+Number number():
+{
+    final Number number;
+    final Token token;
+}
+{
+    (
+        token = <INTEGER> { number = Long.parseLong(token.image, 10); } |
+        token = <FLOAT> { number = Double.parseDouble(token.image); }
+    ) { return number; }
+}
