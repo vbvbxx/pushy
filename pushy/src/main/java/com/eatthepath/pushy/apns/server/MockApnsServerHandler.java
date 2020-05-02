@@ -37,7 +37,6 @@ import io.netty.util.concurrent.PromiseCombiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -320,15 +319,7 @@ class MockApnsServerHandler extends Http2ConnectionHandler implements Http2Frame
                     errorPayload.put("timestamp", rejectNotificationResponse.timestamp.toEpochMilli());
                 }
 
-                final StringBuilder stringBuilder = new StringBuilder();
-
-                try {
-                    JsonSerializer.writeJsonText(errorPayload, stringBuilder);
-                    payloadBytes = stringBuilder.toString().getBytes();
-                } catch (final IOException e) {
-                    // This should never happen for a StringBuilder
-                    throw new RuntimeException("Failed to write JSON text", e);
-                }
+                payloadBytes = JsonSerializer.writeJsonTextAsString(errorPayload).getBytes();
             }
 
             final ChannelPromise headersPromise = context.newPromise();

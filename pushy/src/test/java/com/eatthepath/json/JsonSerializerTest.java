@@ -31,6 +31,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextMap")
+    void writeJsonTextAsStringMap(final Map<?, ?> map, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(map));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextMap() {
         final SortedMap<String, String> multiEntryMap;
         {
@@ -65,6 +71,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextCollection")
+    void writeJsonTextAsStringCollection(final Collection<?> collection, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(collection));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextCollection() {
         return Stream.of(
                 arguments(null, "null"),
@@ -81,6 +93,12 @@ public class JsonSerializerTest {
         JsonSerializer.writeJsonValue(array, stringBuilder);
 
         assertEquals(expectedValue, stringBuilder.toString());
+    }
+
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextByteArray")
+    void writeJsonTextAsStringByteArray(final byte[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
     }
 
     private static Stream<Arguments> parametersForWriteJsonTextByteArray() {
@@ -100,6 +118,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextShortArray")
+    void writeJsonTextAsStringShortArray(final short[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextShortArray() {
         return Stream.of(
                 arguments(null, "null"),
@@ -115,6 +139,12 @@ public class JsonSerializerTest {
         JsonSerializer.writeJsonValue(array, stringBuilder);
 
         assertEquals(expectedValue, stringBuilder.toString());
+    }
+
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextIntArray")
+    void writeJsonTextAsStringIntArray(final int[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
     }
 
     private static Stream<Arguments> parametersForWriteJsonTextIntArray() {
@@ -134,6 +164,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextLongArray")
+    void writeJsonTextAsStringLongArray(final long[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextLongArray() {
         return Stream.of(
                 arguments(null, "null"),
@@ -149,6 +185,12 @@ public class JsonSerializerTest {
         JsonSerializer.writeJsonValue(array, stringBuilder);
 
         assertEquals(expectedValue, stringBuilder.toString());
+    }
+
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextFloatArray")
+    void writeJsonTextAsStringFloatArray(final float[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
     }
 
     private static Stream<Arguments> parametersForWriteJsonTextFloatArray() {
@@ -170,6 +212,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextDoubleArray")
+    void writeJsonTextAsStringDoubleArray(final double[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextDoubleArray() {
         return Stream.of(
                 arguments(null, "null"),
@@ -189,6 +237,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextBooleanArray")
+    void writeJsonTextAsStringBooleanArray(final boolean[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextBooleanArray() {
         return Stream.of(
                 arguments(null, "null"),
@@ -206,6 +260,12 @@ public class JsonSerializerTest {
         assertEquals(expectedValue, stringBuilder.toString());
     }
 
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextCharArray")
+    void writeJsonTextAsStringCharArray(final char[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
+    }
+
     private static Stream<Arguments> parametersForWriteJsonTextCharArray() {
         return Stream.of(
                 arguments(null, "null"),
@@ -221,6 +281,12 @@ public class JsonSerializerTest {
         JsonSerializer.writeJsonValue(array, stringBuilder);
 
         assertEquals(expectedValue, stringBuilder.toString());
+    }
+
+    @ParameterizedTest
+    @MethodSource("parametersForWriteJsonTextObjectArray")
+    void writeJsonTextAsStringObjectArray(final Object[] array, final String expectedValue) {
+        assertEquals(expectedValue, JsonSerializer.writeJsonTextAsString(array));
     }
 
     private static Stream<Arguments> parametersForWriteJsonTextObjectArray() {
@@ -286,7 +352,7 @@ public class JsonSerializerTest {
                 arguments("String with \b\f\n\r\t lots/of \\ \"escaped characters\" \u0006 and still more text…",
                         "\"String with \\b\\f\\n\\r\\t lots\\/of \\\\ \\\"escaped characters\\\" \\u0006 and still more text…\""));
     }
-    
+
     @ParameterizedTest
     @MethodSource("parametersForWriteJsonValueChar")
     void writeJsonValueChar(final char c, final String expectedValue) throws IOException {

@@ -31,7 +31,6 @@ import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.base64.Base64Dialect;
 import io.netty.util.AsciiString;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -161,8 +160,8 @@ public class AuthenticationToken {
         this.header = new AuthenticationTokenHeader(signingKey.getKeyId());
         this.claims = new AuthenticationTokenClaims(signingKey.getTeamId(), issuedAt);
 
-        final String headerJson = getMapAsJsonText(this.header.toMap());
-        final String claimsJson = getMapAsJsonText(this.claims.toMap());
+        final String headerJson = JsonSerializer.writeJsonTextAsString(this.header.toMap());
+        final String claimsJson = JsonSerializer.writeJsonTextAsString(this.claims.toMap());
 
         final StringBuilder payloadBuilder = new StringBuilder();
         payloadBuilder.append(encodeUnpaddedBase64UrlString(headerJson.getBytes(StandardCharsets.US_ASCII)));
@@ -275,8 +274,8 @@ public class AuthenticationToken {
 
         final byte[] headerAndClaimsBytes;
 
-        final String headerJson = getMapAsJsonText(this.header.toMap());
-        final String claimsJson = getMapAsJsonText(this.claims.toMap());
+        final String headerJson = JsonSerializer.writeJsonTextAsString(this.header.toMap());
+        final String claimsJson = JsonSerializer.writeJsonTextAsString(this.claims.toMap());
 
         final String encodedHeaderAndClaims =
                 encodeUnpaddedBase64UrlString(headerJson.getBytes(StandardCharsets.US_ASCII)) + '.' +
@@ -377,18 +376,5 @@ public class AuthenticationToken {
         decodedByteBuf.release();
 
         return decodedBytes;
-    }
-
-    static String getMapAsJsonText(final Map<String, Object> map) {
-        final StringBuilder stringBuilder = new StringBuilder();
-
-        try {
-            JsonSerializer.writeJsonText(map, stringBuilder);
-        } catch (final IOException e) {
-            // This should never happen with a StringBuilder
-            throw new RuntimeException("Failed to write JSON text", e);
-        }
-
-        return stringBuilder.toString();
     }
 }

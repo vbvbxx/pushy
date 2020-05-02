@@ -24,7 +24,6 @@ package com.eatthepath.pushy.apns.util;
 
 import com.eatthepath.json.JsonSerializer;
 
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -805,15 +804,7 @@ public class ApnsPayloadBuilder {
             payload.put(entry.getKey(), entry.getValue());
         }
 
-        final StringBuilder stringBuilder = new StringBuilder();
-
-        try {
-            JsonSerializer.writeJsonText(payload, stringBuilder);
-            return stringBuilder.toString();
-        } catch (final IOException e) {
-            // This should never happen with a StringBuilder
-            throw new RuntimeException("Failed to write JSON text", e);
-        }
+        return JsonSerializer.writeJsonTextAsString(payload);
     }
 
     /**
@@ -832,14 +823,6 @@ public class ApnsPayloadBuilder {
      * @since 0.12
      */
     public static String buildMdmPayload(final String pushMagicValue) {
-        final StringBuilder stringBuilder = new StringBuilder();
-
-        try {
-            JsonSerializer.writeJsonText(Collections.singletonMap(MDM_KEY, pushMagicValue), stringBuilder);
-            return stringBuilder.toString();
-        } catch (final IOException e) {
-            // This should never happen with a StringBuilder
-            throw new RuntimeException("Failed to write JSON text", e);
-        }
+        return JsonSerializer.writeJsonTextAsString(Collections.singletonMap(MDM_KEY, pushMagicValue));
     }
 }
